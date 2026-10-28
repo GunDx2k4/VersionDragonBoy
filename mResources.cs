@@ -16,6 +16,66 @@ public class mResources
 
 	public static string notiRuby = string.Empty;
 
+	public static string tuDongDanh;
+
+	public static string autoTrain;
+
+	public static string tanSat;
+
+	public static string tuDongTDLT;
+
+	public static string boQuaSieuQuai;
+
+	public static string suDungPhieuSaoVang;
+
+	public static string doiKhuKhiHetQuai;
+
+	public static string danhTheoHp;
+
+	public static string chonQuaiTheoTen;
+
+	public static string khongCoMucTieu;
+
+	public static string tatCa;
+
+	public static string danhSachSkillTuDanh;
+
+	public static string muaBuaHoTroKills;
+
+	public static string[] autoTrain_TabNames;
+
+	public static string[] autoTrain_TabNames_2;
+
+	public static string[] autoPick_Names;
+
+	public static string[] autoBua_Names;
+
+	public static string hpTren;
+
+	public static string hpDuoi;
+
+	public static string khongGioiHan;
+
+	public static string percentHpDungDau;
+
+	public static string percentMpDungDau;
+
+	public static string tuDungDau;
+
+	public static string dsIdNhat;
+
+	public static string dsIdLoaiTru;
+
+	public static string dsIdVutBo;
+
+	public static string dsItemIdNhat;
+
+	public static string dsItemIdLoaiTru;
+
+	public static string dsItemIdVutBo;
+
+	public static string quai;
+
 	public static string equip = string.Empty;
 
 	public static string unlock = string.Empty;
@@ -51,6 +111,8 @@ public class mResources
 	public static string pet;
 
 	public static string maychutathoacmatsong;
+
+	public static string cannot_connect_server;
 
 	public static string cauhinhthap;
 
@@ -1147,6 +1209,8 @@ public class mResources
 	public static string confirmChangeServer;
 
 	public static string cauhinhthuong;
+
+	public static string sualoi;
 
 	public static string countDown_waitingroom;
 

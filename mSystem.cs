@@ -16,6 +16,8 @@ public class mSystem
 
 	public static int clientType = 4;
 
+	public static bool isPC => Main.isPC;
+
 	public static sbyte LANGUAGE;
 
 	public static sbyte curINAPP;
@@ -380,7 +382,7 @@ public class mSystem
 		return DateTime.Now.Hour;
 	}
 
-	public static void println(object str)
+	public static void println(string str)
 	{
 		Debug.Log(str);
 	}

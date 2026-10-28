@@ -81,6 +81,14 @@ public class ServerListScreen : mScreen, IActionListener
 
 	public static int flagServer;
 
+	public static int countConnectServer;
+
+	public static long timeNextConnectServer;
+
+	public static int loginActionPending;
+
+	private static int pendingLoginActionAfterImageSource;
+
 	public static bool bigOk;
 
 	public static int percent;
@@ -373,7 +381,18 @@ public class ServerListScreen : mScreen, IActionListener
 		try
 		{
 			string empty = string.Empty;
-			empty = ((testConnect != 0) ? (empty + nameServer[ipSelect] + " connected") : (empty + nameServer[ipSelect] + " disconnect"));
+			if (testConnect == 0)
+			{
+				empty = empty + nameServer[ipSelect] + " [disconnect]";
+			}
+			else if (testConnect == -1)
+			{
+				empty = empty + nameServer[ipSelect] + " [connecting...]";
+			}
+			else
+			{
+				empty = empty + nameServer[ipSelect] + " [connected]";
+			}
 			if (mSystem.isTest)
 			{
 				mFont.tahoma_7_white.drawString(g, empty, GameCanvas.w - 2, num + 15 + 15, 1, mFont.tahoma_7_grey);
@@ -761,6 +780,7 @@ public class ServerListScreen : mScreen, IActionListener
 
 	public override void switchToMe()
 	{
+		GameCanvas.clearTransientPopupState();
 		Res.outz(">>>>switchToMe  ServerListScreen: ");
 		EffectManager.remove();
 		GameScr.cmy = 0;
@@ -1047,6 +1067,70 @@ public class ServerListScreen : mScreen, IActionListener
 		}
 	}
 
+	public void connectBeforeLogin(int action)
+	{
+		loginActionPending = action;
+		performLoginAction(action);
+	}
+
+	private void performLoginAction(int action)
+	{
+		if (action == 0)
+		{
+			actLogin();
+		}
+		else if (action == 1)
+		{
+			actPlayNew();
+		}
+	}
+
+	public static bool performPendingLoginActionAfterImageSource(bool allowLoginAction = true)
+	{
+		if (pendingLoginActionAfterImageSource != 0)
+		{
+			int action = pendingLoginActionAfterImageSource;
+			pendingLoginActionAfterImageSource = 0;
+			if (allowLoginAction && ServerListScreen.instance != null)
+			{
+				ServerListScreen.instance.performLoginAction(action);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static void clearPendingLoginActionAfterImageSource()
+	{
+		pendingLoginActionAfterImageSource = 0;
+	}
+
+	public void actPlayNew()
+	{
+		GameScr.resetItemUpdateFlags();
+		GameCanvas.serverScreen.selectServer();
+		GameCanvas.serverScreen.Login_New();
+	}
+
+	public static void ResetSecondaryConnection()
+	{
+		Session_ME2.gI().clearSendingMessage();
+		Session_ME2.gI().close();
+	}
+
+	public static void ApplySecondaryEndpointFromHandshake(string requestedHost, int requestedPort, bool serverRequestedSecondary, bool isMainSession)
+	{
+		if (isMainSession)
+		{
+			linkDefault = requestedHost;
+			port = requestedPort;
+			if (!serverRequestedSecondary)
+			{
+				ResetSecondaryConnection();
+			}
+		}
+	}
+
 	public void init()
 	{
 		if (!loadScreen)
@@ -1127,10 +1211,21 @@ public class ServerListScreen : mScreen, IActionListener
 
 	public static void ConnectIP()
 	{
+		if (address == null || port == null || ipSelect < 0 || ipSelect >= address.Length || ipSelect >= port.Length)
+		{
+			Cout.println("ConnectIP: invalid ipSelect = " + ipSelect);
+			return;
+		}
 		GameMidlet.IP = address[ipSelect];
 		GameMidlet.PORT = port[ipSelect];
-		mResources.loadLanguague(language[ipSelect]);
-		LoginScr.serverName = nameServer[ipSelect];
+		if (language != null && ipSelect < language.Length)
+		{
+			mResources.loadLanguague(language[ipSelect]);
+		}
+		if (nameServer != null && ipSelect < nameServer.Length)
+		{
+			LoginScr.serverName = nameServer[ipSelect];
+		}
 		GameCanvas.connect();
 	}
 
@@ -1147,6 +1242,7 @@ public class ServerListScreen : mScreen, IActionListener
 
 	public void Login_New()
 	{
+		GameScr.resetItemUpdateFlags();
 		if (GameCanvas.loginScr == null)
 		{
 			GameCanvas.loginScr = new LoginScr();

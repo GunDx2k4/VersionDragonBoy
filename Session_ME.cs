@@ -273,6 +273,13 @@ public class Session_ME : ISession
 
 	private long timeWaitConnect;
 
+	private static readonly object connectLock = new object();
+
+	private static long connectionGeneration;
+
+	public static long ConnectionGeneration => connectionGeneration;
+
+
 	public static int count;
 
 	public static MyVector recieveMsg = new MyVector();
@@ -308,6 +315,10 @@ public class Session_ME : ISession
 
 	public void connect(string host, int port)
 	{
+		lock (connectLock)
+		{
+			connectionGeneration++;
+		}
 		if (connected || connecting)
 		{
 			Debug.Log(">>>return connect ...!" + connected + "  ::  " + connecting);

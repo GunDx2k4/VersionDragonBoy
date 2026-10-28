@@ -4,7 +4,7 @@ public class Cmd
 
 	public const sbyte CMD_EXTRA = 24;
 
-	public const sbyte EXTRA_LINK = sbyte.MaxValue;
+	public const sbyte EXTRA_LINK = 127;
 
 	public const sbyte LOGIN = 0;
 
@@ -574,7 +574,7 @@ public class Cmd
 
 	public const sbyte LUCKY_ROUND = -127;
 
-	public const sbyte RADA_CARD = sbyte.MaxValue;
+	public const sbyte RADA_CARD = 127;
 
-	public const sbyte CHAR_EFFECT = sbyte.MinValue;
+	public const sbyte CHAR_EFFECT = -128;
 }

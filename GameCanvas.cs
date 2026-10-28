@@ -11,6 +11,8 @@ public class GameCanvas : IActionListener
 
 	public static bool lowGraphic = false;
 
+	public static bool mediumGraphic;
+
 	public static bool serverchat = false;
 
 	public static bool isMoveNumberPad = true;
@@ -835,6 +837,7 @@ public class GameCanvas : IActionListener
 		Session_ME2.gI().clearSendingMessage();
 		Session_ME.gI().close();
 		Session_ME2.gI().close();
+		AutoTrainMenu.setAutoAttack(false, "Mất kết nối (GameCanvas.onDisconnected)");
 		if (Controller.isLoadingData)
 		{
 			startOK(mResources.pls_restart_game_error, 8885, null);
@@ -857,6 +860,14 @@ public class GameCanvas : IActionListener
 			ServerListScreen.testConnect = 0;
 		}
 		mSystem.endKey();
+	}
+
+	public static void clearTransientPopupState()
+	{
+		currentDialog = null;
+		msgdlg = null;
+		infoDlg = null;
+		ChatPopup.clearTransientPopups();
 	}
 
 	public void onConnectionFail()

@@ -163,6 +163,15 @@ public class SmallImage
 		}
 	}
 
+	private static Small getSmallImage(int id)
+	{
+		if (imgNew == null || id < 0 || id >= imgNew.Length)
+		{
+			return null;
+		}
+		return imgNew[id];
+	}
+
 	public static void drawSmallImage(mGraphics g, int id, int x, int y, int transform, int anchor)
 	{
 		if (imgbig == null)

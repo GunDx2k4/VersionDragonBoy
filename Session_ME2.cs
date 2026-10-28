@@ -274,6 +274,13 @@ public class Session_ME2 : ISession
 
 	private long timeWaitConnect;
 
+	private static readonly object connectLock = new object();
+
+	private static long connectionGeneration;
+
+	public static long ConnectionGeneration => connectionGeneration;
+
+
 	public static MyVector recieveMsg = new MyVector();
 
 	public Session_ME2()
@@ -307,6 +314,10 @@ public class Session_ME2 : ISession
 
 	public void connect(string host, int port)
 	{
+		lock (connectLock)
+		{
+			connectionGeneration++;
+		}
 		if (!connected && !connecting && mSystem.currentTimeMillis() >= timeWaitConnect)
 		{
 			timeWaitConnect = mSystem.currentTimeMillis() + 50;

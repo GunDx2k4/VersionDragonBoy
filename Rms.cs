@@ -5,6 +5,9 @@ using UnityEngine;
 
 public class Rms
 {
+	public static Dictionary<string, sbyte[]> memCache = new Dictionary<string, sbyte[]>();
+
+
 	public static int status;
 
 	public static sbyte[] data;
@@ -31,6 +34,10 @@ public class Rms
 
 	public static void saveRMS(string filename, sbyte[] data)
 	{
+		if (filename != null && data != null)
+		{
+			memCache[filename] = data;
+		}
 		if (Thread.CurrentThread.Name == Main.mainThreadName)
 		{
 			__saveRMS(filename, data);
@@ -43,6 +50,14 @@ public class Rms
 
 	public static sbyte[] loadRMS(string filename)
 	{
+		if (filename == null)
+		{
+			return null;
+		}
+		if (memCache.TryGetValue(filename, out var cachedData))
+		{
+			return cachedData;
+		}
 		if (Thread.CurrentThread.Name == Main.mainThreadName)
 		{
 			return __loadRMS(filename);
@@ -278,6 +293,7 @@ public class Rms
 
 	public static void clearRMS()
 	{
+		memCache.Clear();
 		deleteRecord("data");
 		deleteRecord("dataVersion");
 		deleteRecord("map");

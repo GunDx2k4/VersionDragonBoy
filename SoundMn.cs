@@ -1,6 +1,6 @@
 using System;
 
-public class SoundMn
+public class SoundMn : IActionListener
 {
 	public class MediaPlayer
 	{
@@ -384,6 +384,15 @@ public class SoundMn
 			GameCanvas.startOK(mResources.plsRestartGame, 8885, null);
 		}
 		getStrOption();
+	}
+
+	public void applyGraphic(int graphic)
+	{
+		GameCanvas.mediumGraphic = (graphic == 1);
+	}
+
+	public void perform(int idAction, object p)
+	{
 	}
 
 	public void AuraToolOption()

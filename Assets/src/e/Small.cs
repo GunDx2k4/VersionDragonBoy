@@ -46,6 +46,15 @@ namespace Assets.src.e
 			}
 		}
 
+		public void clean()
+		{
+		if (img != null && img != GameCanvas.imgLoad)
+			{
+				img = null;
+			}
+			timePaint = 0;
+		}
+
 		public void update()
 		{
 			timeUpdate++;
