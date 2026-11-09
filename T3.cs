@@ -22,7 +22,7 @@ public class T3 : mResources
 		mResources.tang = "Tingkat";
 		mResources.den = "bergeser ke";
 		mResources.kquaVongQuay = "Hasil angka keberuntungan";
-		mResources.quayso = "Siapa yang harus hipilih";
+		mResources.quayso = "Siapa yang harus dipilih";
 		mResources.gameInfo = "Pemberitahuan";
 		mResources.useGem = "Auto terlahir kembali";
 		mResources.autoFunction = "Auto fungsi";
@@ -39,6 +39,7 @@ public class T3 : mResources
 		mResources.follow = "Ikut";
 		mResources.pet = "Murid";
 		mResources.maychutathoacmatsong = "Koneksi gagal, harap coba kembali";
+		mResources.cannot_connect_server = "Tidak dapat terhubung ke server";
 		mResources.cauhinhthap = "Grafis kurang";
 		mResources.cauhinhcao = "Grafik tinggi";
 		mResources.cauhinhthuong = "Grafik medium";
@@ -256,6 +257,36 @@ public class T3 : mResources
 		mResources.million = "mil";
 		mResources.MENU = "Menu";
 		mResources.CLOSE = "Tutup";
+		mResources.tuDongDanh = "Serang Otomatis";
+		mResources.autoTrain = "Pelatihan Otomatis";
+		mResources.tanSat = "Bantai";
+		mResources.tuDongTDLT = "Latihan Otomatis";
+		mResources.boQuaSieuQuai = "Lewati Monster Super";
+		mResources.suDungPhieuSaoVang = "Pakai Tiket Bintang";
+		mResources.doiKhuKhiHetQuai = "Ganti Area Saat Habis";
+		mResources.danhTheoHp = "Serang Sesuai HP";
+		mResources.chonQuaiTheoTen = "Pilih Monster Sesuai Nama:";
+		mResources.khongCoMucTieu = "(Tidak ada target)";
+		mResources.tatCa = "Semua";
+		mResources.danhSachSkillTuDanh = "Daftar Skill Otomatis:";
+		mResources.muaBuaHoTroKills = "Beli Jimat Pendukung:";
+		mResources.autoTrain_TabNames = new string[3] { "Pelatihan", "Barang", "Ambil" };
+		mResources.autoTrain_TabNames_2 = new string[2] { "Pelatihan", "Barang" };
+		mResources.autoPick_Names = new string[4] { "Ambil Otomatis", "Ambil Barang Orang Lain", "Ambil Seluruh Peta", "Buang Barang Otomatis" };
+		mResources.autoBua_Names = new string[4] { "Kekuatan", "Kulit Badak", "Magnet", "Kebijaksanaan" };
+		mResources.hpTren = "HP Atas";
+		mResources.hpDuoi = "HP Bawah";
+		mResources.khongGioiHan = "Tanpa Batas";
+		mResources.percentHpDungDau = "% HP Pakai Kacang";
+		mResources.percentMpDungDau = "% MP Pakai Kacang";
+		mResources.tuDungDau = "Otomatis pakai kacang:";
+		mResources.dsIdNhat = "Daftar ID Ambil";
+		mResources.dsIdLoaiTru = "Daftar ID Pengecualian";
+		mResources.dsIdVutBo = "Daftar ID Buang";
+		mResources.dsItemIdNhat = "Daftar ItemID Ambil:";
+		mResources.dsItemIdLoaiTru = "Daftar ItemID Pengecualian:";
+		mResources.dsItemIdVutBo = "Daftar ItemID Buang:";
+		mResources.quai = "Monster ";
 		mResources.ON = "Pilih";
 		mResources.OFF = "Pilih";
 		mResources.ENABLE = "Nyalakan";
@@ -552,6 +583,7 @@ public class T3 : mResources
 		mResources.playNew = "Game baru";
 		mResources.playAcc = "Account bermain";
 		mResources.not_register_yet = "Tidak mendaftar belum";
+		mResources.sualoi = "Memperbaiki Kesalahan";
 		mResources.countDown_waitingroom = "CountDown: ";
 	}
 }

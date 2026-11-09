@@ -326,7 +326,7 @@ public class Image
 		Texture2D texture2D = Resources.Load(filename) as Texture2D;
 		if (texture2D == null)
 		{
-			throw new Exception("NULL POINTER EXCEPTION AT Image __createImage " + filename);
+			return null;
 		}
 		image.texture = texture2D;
 		image.w = image.texture.width;
@@ -345,16 +345,27 @@ public class Image
 		Image image = new Image();
 		try
 		{
-			image.texture.LoadImage(imageData);
+			image.texture = new Texture2D(1, 1);
+			if (!image.texture.LoadImage(imageData))
+			{
+				UnityEngine.Object.Destroy(image.texture);
+				Cout.LogError("CREATE IMAGE FROM ARRAY FAIL: LoadImage returned false");
+				return createImage(1, 1);
+			}
 			image.w = image.texture.width;
 			image.h = image.texture.height;
 			setTextureQuality(image);
+			return image;
 		}
-		catch (Exception)
+		catch (Exception ex)
 		{
-			Cout.LogError("CREAT IMAGE FROM ARRAY FAIL \n" + Environment.StackTrace);
+			if (image.texture != null)
+			{
+				UnityEngine.Object.Destroy(image.texture);
+			}
+			Cout.LogError("CREATE IMAGE FROM ARRAY FAIL: " + ex.Message + "\n" + ex.StackTrace);
+			return createImage(1, 1);
 		}
-		return image;
 	}
 
 	private static Image __createImage(Image src, int x, int y, int w, int h, int transform)

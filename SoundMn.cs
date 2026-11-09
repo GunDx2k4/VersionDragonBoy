@@ -1,6 +1,6 @@
 using System;
 
-public class SoundMn
+public class SoundMn : IActionListener
 {
 	public class MediaPlayer
 	{
@@ -373,17 +373,71 @@ public class SoundMn
 
 	public void CaseSizeScr()
 	{
-		if (GameCanvas.lowGraphic)
+		GameCanvas.clearAllPointerEvent();
+		int num = Rms.loadRMSInt("cau hinh");
+		if (num == -1)
 		{
-			Rms.saveRMSInt("lowGraphic", 0);
-			GameCanvas.startOK(mResources.plsRestartGame, 8885, null);
+			num = 0;
+		}
+		MyVector myVector = new MyVector();
+		myVector.addElement(new Command(mResources.case1, this, 1, null));
+		myVector.addElement(new Command(mResources.case2, this, 2, null));
+		myVector.addElement(new Command(mResources.case3, this, 3, null));
+		GameCanvas.menu.startAt(myVector, 0, 0);
+		if (num == 1)
+		{
+			GameCanvas.menu.menuSelectedItem = 0;
+		}
+		else if (num == 0)
+		{
+			GameCanvas.menu.menuSelectedItem = 2;
 		}
 		else
 		{
-			Rms.saveRMSInt("lowGraphic", 1);
-			GameCanvas.startOK(mResources.plsRestartGame, 8885, null);
+			GameCanvas.menu.menuSelectedItem = 1;
+		}
+	}
+
+	public void applyGraphic(int graphic)
+	{
+		Rms.saveRMSInt("cau hinh", graphic);
+		GameCanvas.typeBg = graphic;
+		GameCanvas.lowGraphic = (GameCanvas.typeBg == 1);
+		GameCanvas.mediumGraphic = (GameCanvas.typeBg == 2);
+		if (!GameCanvas.lowGraphic)
+		{
+			if (GameCanvas.imgWaterSplash != null)
+			{
+				GameCanvas.loadWaterSplash();
+			}
+			BackgroudEffect.initCloud();
 		}
 		getStrOption();
+		string info = ((graphic == 0) ? mResources.case3 : ((graphic == 2) ? mResources.case2 : mResources.case1));
+		if (GameCanvas.currentScreen != GameScr.gI())
+		{
+			GameCanvas.startOKDlg(info);
+		}
+		else
+		{
+			InfoDlg.show(info);
+		}
+	}
+
+	public void perform(int idAction, object p)
+	{
+		if (idAction == 1)
+		{
+			applyGraphic(1);
+		}
+		else if (idAction == 2)
+		{
+			applyGraphic(2);
+		}
+		else if (idAction == 3)
+		{
+			applyGraphic(0);
+		}
 	}
 
 	public void AuraToolOption()

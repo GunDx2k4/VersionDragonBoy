@@ -102,11 +102,17 @@ public class mGraphics
 		if (cachedTextures.Count > 400)
 		{
 			cachedTextures.Clear();
+			clearCached();
 		}
 		if (value.width * value.height < GameCanvas.w * GameCanvas.h)
 		{
 			cachedTextures.Add(key, value);
 		}
+	}
+
+	public static void clearCached()
+	{
+		cachedColor.Clear();
 	}
 
 	public void translate(int tx, int ty)

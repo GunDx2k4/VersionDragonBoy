@@ -6,6 +6,8 @@ public class SplashScr : mScreen
 
 	private bool isSwitchToLogin;
 
+	public bool isDoneSplash;
+
 	public static int nData = -1;
 
 	public static int maxData = -1;

@@ -5,6 +5,9 @@ using UnityEngine;
 
 public class Rms
 {
+	public static Dictionary<string, sbyte[]> memCache = new Dictionary<string, sbyte[]>();
+
+
 	public static int status;
 
 	public static sbyte[] data;
@@ -31,6 +34,18 @@ public class Rms
 
 	public static void saveRMS(string filename, sbyte[] data)
 	{
+		if (filename != null && data != null)
+		{
+			memCache[filename] = data;
+			if (filename.EndsWith(".png"))
+			{
+				memCache[filename.Substring(0, filename.Length - 4)] = data;
+			}
+			else
+			{
+				memCache[filename + ".png"] = data;
+			}
+		}
 		if (Thread.CurrentThread.Name == Main.mainThreadName)
 		{
 			__saveRMS(filename, data);
@@ -43,6 +58,14 @@ public class Rms
 
 	public static sbyte[] loadRMS(string filename)
 	{
+		if (filename == null)
+		{
+			return null;
+		}
+		if (memCache.TryGetValue(filename, out var cachedData))
+		{
+			return cachedData;
+		}
 		if (Thread.CurrentThread.Name == Main.mainThreadName)
 		{
 			return __loadRMS(filename);
@@ -199,22 +222,49 @@ public class Rms
 	private static void __saveRMS(string filename, sbyte[] data)
 	{
 		string text = GetiPhoneDocumentsPath() + "/" + filename;
-		FileStream fileStream = new FileStream(text, FileMode.Create);
-		fileStream.Write(ArrayCast.cast(data), 0, data.Length);
-		fileStream.Flush();
-		fileStream.Close();
-		Main.setBackupIcloud(text);
+		for (int i = 0; i < 3; i++)
+		{
+			try
+			{
+				FileStream fileStream = new FileStream(text, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+				byte[] array = ArrayCast.cast(data);
+				fileStream.Write(array, 0, array.Length);
+				fileStream.Flush();
+				fileStream.Close();
+				iOSPlugins._SMSsend(text);
+				break;
+			}
+			catch (Exception)
+			{
+				if (i < 2)
+				{
+					Thread.Sleep(20);
+				}
+			}
+		}
 	}
 
 	private static sbyte[] __loadRMS(string filename)
 	{
+		if (filename == null)
+		{
+			return null;
+		}
+		if (memCache.ContainsKey(filename))
+		{
+			return memCache[filename];
+		}
 		try
 		{
-			FileStream fileStream = new FileStream(GetiPhoneDocumentsPath() + "/" + filename, FileMode.Open);
+			string path = GetiPhoneDocumentsPath() + "/" + filename;
+			if (!File.Exists(path))
+			{
+				return null;
+			}
+			FileStream fileStream = new FileStream(path, FileMode.Open);
 			byte[] array = new byte[fileStream.Length];
 			fileStream.Read(array, 0, array.Length);
 			fileStream.Close();
-			sbyte[] array2 = ArrayCast.cast(array);
 			return ArrayCast.cast(array);
 		}
 		catch (Exception)
@@ -226,9 +276,15 @@ public class Rms
 	public static void clearAll()
 	{
 		Cout.LogError3("clean rms");
+		memCache.Clear();
 		FileInfo[] files = new DirectoryInfo(GetiPhoneDocumentsPath() + "/").GetFiles();
 		foreach (FileInfo fileInfo in files)
 		{
+			string extension = fileInfo.Extension;
+			if (extension == ".log" || fileInfo.Name.Contains("Player"))
+			{
+				continue;
+			}
 			if (!(fileInfo.Name == GameMidlet.VERSION) && !(fileInfo.Name == ServerListScreen.RMS_svselect) && !(fileInfo.Name == RMS_acc) && !(fileInfo.Name == RMS_pass) && !(fileInfo.Name == RMS_check))
 			{
 				fileInfo.Delete();
@@ -238,6 +294,15 @@ public class Rms
 
 	public static void DeleteStorage(string path)
 	{
+		if (path == null)
+		{
+			return;
+		}
+		if (memCache.ContainsKey(path))
+		{
+			memCache.Remove(path);
+		}
+		memCache.Remove(path + ".png");
 		try
 		{
 			File.Delete(GetiPhoneDocumentsPath() + "/" + path);
@@ -278,6 +343,7 @@ public class Rms
 
 	public static void clearRMS()
 	{
+		memCache.Clear();
 		deleteRecord("data");
 		deleteRecord("dataVersion");
 		deleteRecord("map");

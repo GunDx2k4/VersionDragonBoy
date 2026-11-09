@@ -274,6 +274,13 @@ public class Session_ME2 : ISession
 
 	private long timeWaitConnect;
 
+	private static readonly object connectLock = new object();
+
+	private static long connectionGeneration;
+
+	public static long ConnectionGeneration => connectionGeneration;
+
+
 	public static MyVector recieveMsg = new MyVector();
 
 	public Session_ME2()
@@ -307,16 +314,29 @@ public class Session_ME2 : ISession
 
 	public void connect(string host, int port)
 	{
-		if (!connected && !connecting && mSystem.currentTimeMillis() >= timeWaitConnect)
+		lock (connectLock)
 		{
-			timeWaitConnect = mSystem.currentTimeMillis() + 50;
+			if (connected || connecting)
+			{
+				Res.outz(">>>return connect ...!" + connected + "  ::  " + connecting);
+				return;
+			}
+			if (mSystem.currentTimeMillis() < timeWaitConnect)
+			{
+				return;
+			}
+			timeWaitConnect = mSystem.currentTimeMillis() + 50L;
 			this.host = host;
 			this.port = port;
 			getKeyComplete = false;
-			close();
-			Debug.Log("connecting...!");
-			Debug.Log("host: " + host);
-			Debug.Log("port: " + port);
+			Interlocked.Increment(ref connectionGeneration);
+			cleanNetwork();
+			Service.resetClientTypeSendState(isMainSession);
+			Controller.clearClientTypeConnect(isMainSession);
+			connecting = true;
+			Res.outz("connecting...!");
+			Res.outz("host: " + host);
+			Res.outz("port: " + port);
 			initThread = new Thread(NetworkInit);
 			initThread.Start();
 		}

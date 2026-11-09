@@ -291,6 +291,19 @@ public class TileMap
 		return false;
 	}
 
+	public static void cleanTile()
+	{
+		if (imgTile != null)
+		{
+			for (int i = 0; i < imgTile.Length; i++)
+			{
+				imgTile[i] = null;
+			}
+			imgTile = null;
+		}
+		mSystem.gcc();
+	}
+
 	public static void freeTilemap()
 	{
 		imgTile = null;
@@ -407,6 +420,7 @@ public class TileMap
 
 	public static void getTile()
 	{
+		cleanTile();
 		if (mSystem.clientType == 3 || mSystem.clientType == 5)
 		{
 			if (mGraphics.zoomLevel == 1)

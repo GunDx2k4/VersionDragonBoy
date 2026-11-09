@@ -10,6 +10,10 @@ public class Controller : IMessageHandler
 
 	protected static Controller me2;
 
+	private static int mainClientTypeConnectPending;
+
+	private static int secondaryClientTypeConnectPending;
+
 	public Message messWait;
 
 	public static bool isLoadingData = false;
@@ -66,6 +70,35 @@ public class Controller : IMessageHandler
 		return me2;
 	}
 
+	private static Small GetOrCreateSmallImageSlot(int idIcon)
+	{
+		if (SmallImage.imgNew == null || idIcon < 0 || idIcon >= SmallImage.imgNew.Length)
+		{
+			return null;
+		}
+		Small small = SmallImage.imgNew[idIcon];
+		if (small == null)
+		{
+			small = new Small();
+			small.id = idIcon;
+			SmallImage.imgNew[idIcon] = small;
+		}
+		return small;
+	}
+
+	private static void SetSmallImageSlotImage(int idIcon, Image image)
+	{
+		Small small = GetOrCreateSmallImageSlot(idIcon);
+		if (small != null)
+		{
+			if (small.img != null && small.img != SmallImage.defaultImage && small.img != image)
+			{
+				small.clean();
+			}
+			small.img = image;
+		}
+	}
+
 	public void onConnectOK(bool isMain1)
 	{
 		isMain = isMain1;
@@ -75,13 +108,65 @@ public class Controller : IMessageHandler
 	public void onConnectionFail(bool isMain1)
 	{
 		isMain = isMain1;
+		Service.resetClientTypeSendState(isMain1);
+		clearClientTypeConnect(isMain1);
 		mSystem.onConnectionFail();
 	}
 
 	public void onDisconnected(bool isMain1)
 	{
 		isMain = isMain1;
+		Service.resetClientTypeSendState(isMain1);
+		clearClientTypeConnect(isMain1);
 		mSystem.onDisconnected();
+	}
+
+	public static void queueClientTypeConnect(bool isMainSession)
+	{
+		if (isMainSession)
+		{
+			mainClientTypeConnectPending++;
+		}
+		else
+		{
+			secondaryClientTypeConnectPending++;
+		}
+	}
+
+	public static bool consumeClientTypeConnect(bool isMainSession)
+	{
+		if (isMainSession)
+		{
+			if (mainClientTypeConnectPending > 0)
+			{
+				mainClientTypeConnectPending--;
+				return true;
+			}
+		}
+		else if (secondaryClientTypeConnectPending > 0)
+		{
+			secondaryClientTypeConnectPending--;
+			return true;
+		}
+		return false;
+	}
+
+	public static void clearClientTypeConnect(bool isMainSession)
+	{
+		if (isMainSession)
+		{
+			mainClientTypeConnectPending = 0;
+		}
+		else
+		{
+			secondaryClientTypeConnectPending = 0;
+		}
+	}
+
+	public static void clearClientTypeConnects()
+	{
+		mainClientTypeConnectPending = 0;
+		secondaryClientTypeConnectPending = 0;
 	}
 
 	public void requestItemPlayer(Message msg)
@@ -3499,6 +3584,7 @@ public class Controller : IMessageHandler
 				GameScr.gI().magicTree = null;
 				GameCanvas.isLoading = true;
 				GameCanvas.debug("SA75", 2);
+				AutoTrainMenu.resetMobNameSnapshot();
 				GameScr.resetAllvector();
 				GameCanvas.endDlg();
 				TileMap.vGo.removeAllElements();
@@ -3537,6 +3623,22 @@ public class Controller : IMessageHandler
 				GameScr.cmy = GameScr.cmtoY;
 				GameCanvas.isRequestMapID = 2;
 				GameCanvas.waitingTimeChangeMap = mSystem.currentTimeMillis() + 1000;
+				if (TileMap.mapID == 155 || TileMap.mapID == 166)
+				{
+					if (AutoTrainMenu.isCheckItem != null && AutoTrainMenu.isCheckItem.Length > 24 && AutoTrainMenu.isCheckItem[24])
+					{
+						AutoTrainMenu.setAutoAttack(true, "Vào map phiếu sao vàng (Map " + TileMap.mapID + ")");
+					}
+				}
+				else if (AutoTrainMenu.isChecked != null && AutoTrainMenu.isChecked.Length > 2 && AutoTrainMenu.isChecked[2] && AutoTrainMenu.lastMapIdBeforeChange == TileMap.mapID)
+				{
+					AutoTrainMenu.needRescanMobs = true;
+				}
+				else
+				{
+					AutoTrainMenu.setAutoAttack(false, "Chuyển sang map mới (Map " + TileMap.mapID + ")");
+				}
+				AutoTrainMenu.lastMapIdBeforeChange = -1;
 				break;
 			case -31:
 			{
@@ -4361,6 +4463,7 @@ public class Controller : IMessageHandler
 			}
 			case -17:
 				GameCanvas.debug("SA88", 2);
+				AutoTrainMenu.setAutoAttack(false, "Nhân vật bị tử vong (ME_DIE)");
 				Char.myCharz().meDead = true;
 				Char.myCharz().cPk = msg.reader().readByte();
 				Char.myCharz().startDie(msg.reader().readShort(), msg.reader().readShort());
@@ -4745,6 +4848,10 @@ public class Controller : IMessageHandler
 		GameScr.gI().dMP = Char.myCharz().cMP;
 		Char.ischangingMap = false;
 		GameScr.gI().switchToMe();
+		if (AutoTrainMenu.isCheckItem != null && AutoTrainMenu.isCheckItem.Length > 24 && AutoTrainMenu.isCheckItem[24])
+		{
+			AutoTrainMenu.setAutoAttack(true, "Hoàn tất load map phiếu sao vàng (Map " + TileMap.mapID + ")");
+		}
 		if (Char.myCharz().cy <= 10 && teleport3 != 0 && teleport3 != 2)
 		{
 			Teleport p = new Teleport(Char.myCharz().cx, Char.myCharz().cy, Char.myCharz().head, Char.myCharz().cdir, 1, true, (teleport3 != 1) ? teleport3 : Char.myCharz().cgender);
@@ -5101,6 +5208,8 @@ public class Controller : IMessageHandler
 			TileMap.bgType = msg.reader().readByte();
 			sbyte teleport = msg.reader().readByte();
 			loadCurrMap(teleport);
+			AutoTrainMenu.captureMobNameSnapshot();
+			AutoTrainMenu.autoTrainNextZoneAllowedTime = mSystem.currentTimeMillis() + 10000L;
 			GameCanvas.debug("SA75x8", 2);
 		}
 		catch (Exception)
@@ -5210,6 +5319,7 @@ public class Controller : IMessageHandler
 				GameScr.vsSkill = msg.reader().readByte();
 				GameScr.vsItem = msg.reader().readByte();
 				sbyte b3 = msg.reader().readByte();
+				GameScr.resetItemUpdateFlags();
 				if (GameCanvas.loginScr.isLogin2)
 				{
 					Rms.saveRMSString(Rms.RMS_acc, string.Empty);

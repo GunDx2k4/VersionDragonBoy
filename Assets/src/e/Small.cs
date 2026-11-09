@@ -46,12 +46,29 @@ namespace Assets.src.e
 			}
 		}
 
+		public void clean()
+		{
+			if (img != null && img != SmallImage.defaultImage)
+			{
+				if (img.texture != null)
+				{
+					UnityEngine.Object.Destroy(img.texture);
+					img.texture = null;
+				}
+			}
+			img = null;
+		}
+
 		public void update()
 		{
 			timeUpdate++;
-			if (timeUpdate - timePaint > 1 && !Char.myCharz().isCharBodyImageID(id))
+			if (timeUpdate - timePaint > 1 && (Char.myCharz() == null || !Char.myCharz().isCharBodyImageID(id)))
 			{
-				SmallImage.imgNew[id] = null;
+				if (SmallImage.imgNew != null && id >= 0 && id < SmallImage.imgNew.Length && SmallImage.imgNew[id] == this)
+				{
+					clean();
+					SmallImage.imgNew[id] = null;
+				}
 			}
 		}
 	}

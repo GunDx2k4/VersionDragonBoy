@@ -11,6 +11,8 @@ public class GameCanvas : IActionListener
 
 	public static bool lowGraphic = false;
 
+	public static bool mediumGraphic;
+
 	public static bool serverchat = false;
 
 	public static bool isMoveNumberPad = true;
@@ -528,6 +530,10 @@ public class GameCanvas : IActionListener
 
 	public void update()
 	{
+		if (GameScr.lastItemUpdateTime > 0L && mSystem.currentTimeMillis() - GameScr.lastItemUpdateTime >= 500L)
+		{
+			GameScr.gI().readOk();
+		}
 		if (currentScreen == _SelectCharScr)
 		{
 			if (gameTick % 2 == 0 && SmallImage.vt_images_watingDowload.size() > 0)
@@ -724,17 +730,29 @@ public class GameCanvas : IActionListener
 				doResetToLoginScr(loginScr);
 			}
 			debug("Zzz", 0);
+			if (Controller.consumeClientTypeConnect(true))
+			{
+				if (!Service.gI().setClientType())
+				{
+					Controller.queueClientTypeConnect(true);
+				}
+			}
+			if (Controller.consumeClientTypeConnect(false))
+			{
+				if (!Service.gI().setClientType(true))
+				{
+					Controller.queueClientTypeConnect(false);
+				}
+			}
 			if ((currentScreen != serverScr || !serverScr.isPaintNewUi) && Controller.isConnectOK)
 			{
 				if (Controller.isMain)
 				{
 					ServerListScreen.testConnect = 2;
-					Service.gI().setClientType();
 					Service.gI().androidPack();
 				}
 				else
 				{
-					Service.gI().setClientType2();
 					Service.gI().androidPack2();
 				}
 				Controller.isConnectOK = false;
@@ -835,6 +853,7 @@ public class GameCanvas : IActionListener
 		Session_ME2.gI().clearSendingMessage();
 		Session_ME.gI().close();
 		Session_ME2.gI().close();
+		AutoTrainMenu.setAutoAttack(false, "Mất kết nối (GameCanvas.onDisconnected)");
 		if (Controller.isLoadingData)
 		{
 			startOK(mResources.pls_restart_game_error, 8885, null);
@@ -857,6 +876,14 @@ public class GameCanvas : IActionListener
 			ServerListScreen.testConnect = 0;
 		}
 		mSystem.endKey();
+	}
+
+	public static void clearTransientPopupState()
+	{
+		currentDialog = null;
+		msgdlg = null;
+		infoDlg = null;
+		ChatPopup.clearTransientPopups();
 	}
 
 	public void onConnectionFail()

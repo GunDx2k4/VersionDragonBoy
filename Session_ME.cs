@@ -273,6 +273,13 @@ public class Session_ME : ISession
 
 	private long timeWaitConnect;
 
+	private static readonly object connectLock = new object();
+
+	private static long connectionGeneration;
+
+	public static long ConnectionGeneration => connectionGeneration;
+
+
 	public static int count;
 
 	public static MyVector recieveMsg = new MyVector();
@@ -308,30 +315,37 @@ public class Session_ME : ISession
 
 	public void connect(string host, int port)
 	{
-		if (connected || connecting)
+		lock (connectLock)
 		{
-			Debug.Log(">>>return connect ...!" + connected + "  ::  " + connecting);
-			return;
+			if (connected || connecting)
+			{
+				Res.outz(">>>return connect ...!" + connected + "  ::  " + connecting);
+				return;
+			}
+			if (mSystem.currentTimeMillis() < timeWaitConnect)
+			{
+				Res.err(">>>>chặn việc nó kết nối 2 3 lần liên tục");
+				return;
+			}
+			timeWaitConnect = mSystem.currentTimeMillis() + 50L;
+			if (isMainSession)
+			{
+				ServerListScreen.testConnect = -1;
+			}
+			this.host = host;
+			this.port = port;
+			getKeyComplete = false;
+			Interlocked.Increment(ref connectionGeneration);
+			cleanNetwork();
+			Service.resetClientTypeSendState(isMainSession);
+			Controller.clearClientTypeConnect(isMainSession);
+			connecting = true;
+			Res.outz("connecting...!");
+			Res.outz("host: " + host);
+			Res.outz("port: " + port);
+			initThread = new Thread(NetworkInit);
+			initThread.Start();
 		}
-		if (mSystem.currentTimeMillis() < timeWaitConnect)
-		{
-			Debug.LogError(">>>>chặn việc nó kết nối 2 3 lần liên tục");
-			return;
-		}
-		timeWaitConnect = mSystem.currentTimeMillis() + 50;
-		if (isMainSession)
-		{
-			ServerListScreen.testConnect = -1;
-		}
-		this.host = host;
-		this.port = port;
-		getKeyComplete = false;
-		close();
-		Debug.Log("connecting...!");
-		Debug.Log("host: " + host);
-		Debug.Log("port: " + port);
-		initThread = new Thread(NetworkInit);
-		initThread.Start();
 	}
 
 	private void NetworkInit()

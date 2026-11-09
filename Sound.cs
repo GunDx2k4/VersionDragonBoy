@@ -103,7 +103,7 @@ public class Sound
 
 	public static int l1;
 
-	public static void setActivity(SoundMn.AssetManager ac)
+	public static void setActivity(AssetManager ac)
 	{
 	}
 

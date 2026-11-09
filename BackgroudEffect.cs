@@ -5,6 +5,18 @@ public class BackgroudEffect
 {
 	public static MyVector vBgEffect = new MyVector();
 
+	private static long lastLacayReloadAttemptTime;
+
+	private static long lastWaterReloadAttemptTime;
+
+	private static short lastWaterReloadAttemptId;
+
+	private const int LUNAR_YEAR_LEAF_IMAGE_ID = 11120;
+
+	private const long LACAY_RELOAD_INTERVAL_MS = 1000L;
+
+	private const long WATER_RELOAD_INTERVAL_MS = 1000L;
+
 	private int[] x;
 
 	private int[] y;
@@ -564,6 +576,27 @@ public class BackgroudEffect
 		}
 	}
 
+	private static bool canRetryWaterImage(short id)
+	{
+		long now = mSystem.currentTimeMillis();
+		if (id != lastWaterReloadAttemptId || now - lastWaterReloadAttemptTime >= WATER_RELOAD_INTERVAL_MS)
+		{
+			lastWaterReloadAttemptId = id;
+			lastWaterReloadAttemptTime = now;
+			return true;
+		}
+		return false;
+	}
+
+	private static Image getReadyWaterImage()
+	{
+		if (canRetryWaterImage(id_water1) && SmallImage.imgNew != null && id_water1 >= 0 && id_water1 < SmallImage.imgNew.Length && SmallImage.imgNew[id_water1] != null)
+		{
+			return SmallImage.imgNew[id_water1].img;
+		}
+		return null;
+	}
+
 	public void paintWater(mGraphics g)
 	{
 		if (typeEff != 10)
@@ -577,7 +610,7 @@ public class BackgroudEffect
 		}
 		if (id_water1 != 0 && water3 == null)
 		{
-			water3 = SmallImage.imgNew[id_water1].img;
+			water3 = getReadyWaterImage();
 		}
 		if (water3 != null)
 		{
@@ -895,6 +928,10 @@ public class BackgroudEffect
 
 	public void paintLacay1(mGraphics g, Image img)
 	{
+		if (img == null)
+		{
+			img = getReadyLacayImage();
+		}
 		int num = ((typeEff != 11) ? 4 : 3);
 		num = ((typeEff != 15) ? 4 : 4);
 		if (typeEff == 11)
@@ -912,6 +949,10 @@ public class BackgroudEffect
 
 	public void paintLacay2(mGraphics g, Image img)
 	{
+		if (img == null)
+		{
+			img = getReadyLacayImage();
+		}
 		int num = ((typeEff != 11) ? 4 : 3);
 		num = ((typeEff != 15) ? 4 : 4);
 		if (typeEff == 11)
@@ -1019,6 +1060,35 @@ public class BackgroudEffect
 		backgroudEffect.colorWater = color;
 		backgroudEffect.yWater = yWater;
 		vBgEffect.addElement(backgroudEffect);
+	}
+
+	private static bool isLacayImageReady(Image img)
+	{
+		return img != null && img != GameCanvas.imgLoad;
+	}
+
+	private static bool canRetryLacayImage()
+	{
+		long now = mSystem.currentTimeMillis();
+		if (now - lastLacayReloadAttemptTime >= LACAY_RELOAD_INTERVAL_MS)
+		{
+			lastLacayReloadAttemptTime = now;
+			return true;
+		}
+		return false;
+	}
+
+	private Image getReadyLacayImage()
+	{
+		if (canRetryLacayImage() && SmallImage.imgNew != null && LUNAR_YEAR_LEAF_IMAGE_ID >= 0 && LUNAR_YEAR_LEAF_IMAGE_ID < SmallImage.imgNew.Length && SmallImage.imgNew[LUNAR_YEAR_LEAF_IMAGE_ID] != null)
+		{
+			Image img = SmallImage.imgNew[LUNAR_YEAR_LEAF_IMAGE_ID].img;
+			if (isLacayImageReady(img))
+			{
+				return img;
+			}
+		}
+		return null;
 	}
 
 	public static void paintWaterAll(mGraphics g)

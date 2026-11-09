@@ -10,6 +10,22 @@ public class Service
 
 	public static long curCheckController;
 
+	public static bool isSendClientType;
+
+	public static bool isSendClientType2;
+
+	private static readonly object clientTypeSendLock = new object();
+
+	private static readonly Queue<Message> pendingLoginMessages = new Queue<Message>();
+
+	public static long lastClientTypeConnectionGeneration;
+
+	public static long lastClientType2ConnectionGeneration;
+
+	public static long imageSourceReadyConnectionGeneration;
+
+	public static long lastTimeSendPlayerAttack;
+
 	public static long curCheckMap;
 
 	public static long logController;
@@ -471,6 +487,16 @@ public class Service
 		{
 			return;
 		}
+		string text = "";
+		if (where == 1 && Char.myCharz().arrItemBag != null && (int)index >= 0 && (int)index < Char.myCharz().arrItemBag.Length)
+		{
+			Item item = Char.myCharz().arrItemBag[(int)index];
+			if (item != null && item.template != null)
+			{
+				text = " [Tên: " + item.template.name + ", ID: " + item.template.id + "]";
+			}
+		}
+		Res.err("[CLIENT -> SERVER] useItem (cmd -43): type=" + type + ", where=" + where + ", index=" + index + ", template=" + template + text + "]");
 		Message message = null;
 		try
 		{
@@ -744,83 +770,99 @@ public class Service
 		return message;
 	}
 
-	public void setClientType()
+	public bool setClientType(bool useSecondarySession = false)
 	{
-		if (Rms.loadRMSInt(Rms.RMS_clienttype) != -1)
+		lock (clientTypeSendLock)
 		{
-			mSystem.clientType = Rms.loadRMSInt(Rms.RMS_clienttype);
-		}
-		try
-		{
-			Res.outz(">>send ClientType1");
-			Message message = messageNotLogin(2);
-			message.writer().writeByte(mSystem.clientType);
-			message.writer().writeByte(mGraphics.zoomLevel);
-			message.writer().writeBoolean(false);
-			message.writer().writeInt(GameCanvas.w);
-			message.writer().writeInt(GameCanvas.h);
-			message.writer().writeBoolean(TField.isQwerty);
-			message.writer().writeBoolean(GameCanvas.isTouch);
-			message.writer().writeUTF(GameCanvas.getPlatformName() + "|" + GameMidlet.VERSION);
-			DataInputStream dataInputStream = MyStream.readFile("/info");
-			if (dataInputStream != null)
+			ISession targetSession = useSecondarySession ? (ISession)Session_ME2.gI() : (ISession)Session_ME.gI();
+			if (targetSession == null || !targetSession.isConnected())
 			{
-				sbyte[] data = new sbyte[dataInputStream.r.buffer.Length];
-				dataInputStream.read(ref data);
-				if (data != null)
+				return false;
+			}
+			long currentGen = useSecondarySession ? Session_ME2.gI().get_ConnectionGeneration() : Session_ME.gI().get_ConnectionGeneration();
+			if (useSecondarySession)
+			{
+				if (isSendClientType2 && lastClientType2ConnectionGeneration == currentGen)
 				{
-					message.writer().writeShort(data.Length);
-					message.writer().write(data);
+					isSendClientType2 = true;
+					return true;
 				}
 			}
-			session.sendMessage(message);
-			message.cleanup();
-		}
-		catch (Exception ex)
-		{
-			Cout.println(ex.Message + ex.StackTrace);
-		}
-	}
+			else if (isSendClientType && lastClientTypeConnectionGeneration == currentGen)
+			{
+				isSendClientType = true;
+				if (isLoginSendReadyLocked(targetSession))
+				{
+					return flushPendingLoginMessagesLocked(targetSession);
+				}
+				return true;
+			}
 
-	public void setClientType2()
-	{
-		Res.outz("SET CLIENT TYPE");
-		if (Rms.loadRMSInt(Rms.RMS_clienttype) != -1)
-		{
-			mSystem.clientType = Rms.loadRMSInt(Rms.RMS_clienttype);
-		}
-		try
-		{
-			Res.outz(">>send ClientType2");
-			Message message = messageNotLogin(2);
-			message.writer().writeByte(mSystem.clientType);
-			message.writer().writeByte(mGraphics.zoomLevel);
-			Res.outz("gui zoomlevel = " + mGraphics.zoomLevel);
-			message.writer().writeBoolean(false);
-			message.writer().writeInt(GameCanvas.w);
-			message.writer().writeInt(GameCanvas.h);
-			message.writer().writeBoolean(TField.isQwerty);
-			message.writer().writeBoolean(GameCanvas.isTouch);
-			message.writer().writeUTF(GameCanvas.getPlatformName() + "|" + GameMidlet.VERSION);
-			DataInputStream dataInputStream = MyStream.readFile("/info");
-			if (dataInputStream != null)
+			if (Rms.loadRMSInt(Rms.RMS_clienttype) != -1)
 			{
-				sbyte[] data = new sbyte[dataInputStream.r.buffer.Length];
-				dataInputStream.read(ref data);
-				if (data != null)
+				mSystem.clientType = Rms.loadRMSInt(Rms.RMS_clienttype);
+			}
+			try
+			{
+				if (useSecondarySession)
 				{
-					message.writer().writeShort(data.Length);
-					message.writer().write(data);
+					Res.outz("SET CLIENT TYPE");
+				}
+				string str = "unknown";
+				if (ServerListScreen.nameServer != null && ServerListScreen.ipSelect >= 0 && ServerListScreen.ipSelect < ServerListScreen.nameServer.Length)
+				{
+					str = ServerListScreen.nameServer[ServerListScreen.ipSelect];
+				}
+				Debug.LogError((useSecondarySession ? ">>send ClientType2" : ">>send ClientType1") + "  >>" + ServerListScreen.ipSelect + "  sv:" + str);
+
+				Message message = messageNotLogin(2);
+				message.writer().writeByte(mSystem.clientType);
+				message.writer().writeByte(mGraphics.zoomLevel);
+				if (useSecondarySession)
+				{
+					Res.outz("gui zoomlevel = " + mGraphics.zoomLevel);
+				}
+				message.writer().writeBoolean(false);
+				message.writer().writeInt(GameCanvas.w);
+				message.writer().writeInt(GameCanvas.h);
+				message.writer().writeBoolean(TField.isQwerty);
+				message.writer().writeBoolean(GameCanvas.isTouch);
+				message.writer().writeUTF(GameCanvas.getPlatformName() + "|" + GameMidlet.VERSION);
+				DataInputStream dataInputStream = MyStream.readFile("/info");
+				if (dataInputStream != null)
+				{
+					sbyte[] data = new sbyte[dataInputStream.r.buffer.Length];
+					dataInputStream.readFully(ref data);
+					if (data != null)
+					{
+						message.writer().writeShort(data.Length);
+						message.writer().write(data);
+					}
+				}
+				targetSession.sendMessage(message);
+
+				if (!useSecondarySession)
+				{
+					isSendClientType = true;
+					lastClientTypeConnectionGeneration = currentGen;
+					if (isLoginSendReadyLocked(targetSession))
+					{
+						return flushPendingLoginMessagesLocked(targetSession);
+					}
+					return true;
+				}
+				else
+				{
+					isSendClientType2 = true;
+					lastClientType2ConnectionGeneration = currentGen;
+					return true;
 				}
 			}
-			session = Session_ME2.gI();
-			session.sendMessage(message);
-			session = Session_ME.gI();
-			message.cleanup();
-		}
-		catch (Exception ex)
-		{
-			ex.StackTrace.ToString();
+			catch (Exception ex)
+			{
+				Cout.println(ex.Message + ex.StackTrace);
+				return false;
+			}
 		}
 	}
 
@@ -860,19 +902,114 @@ public class Service
 		}
 	}
 
+	public static void resetClientTypeSendState(bool isMainSession)
+	{
+		lock (clientTypeSendLock)
+		{
+			if (isMainSession)
+			{
+				isSendClientType = false;
+				lastClientTypeConnectionGeneration = 0L;
+			}
+			else
+			{
+				isSendClientType2 = false;
+				lastClientType2ConnectionGeneration = 0L;
+			}
+		}
+	}
+
+	public static void resetClientTypeSendState()
+	{
+		lock (clientTypeSendLock)
+		{
+			isSendClientType = false;
+			isSendClientType2 = false;
+			lastClientTypeConnectionGeneration = 0L;
+			lastClientType2ConnectionGeneration = 0L;
+			imageSourceReadyConnectionGeneration = 0L;
+			while (pendingLoginMessages.Count > 0)
+			{
+				Message msg = pendingLoginMessages.Dequeue();
+				msg?.cleanup();
+			}
+		}
+	}
+
+	public static bool markImageSourceReadyAndFlushPendingLogin()
+	{
+		lock (clientTypeSendLock)
+		{
+			imageSourceReadyConnectionGeneration = Session_ME.ConnectionGeneration;
+			return flushPendingLoginMessagesLocked(Session_ME.gI());
+		}
+	}
+
+	public static bool isLoginReadyForCurrentConnection()
+	{
+		lock (clientTypeSendLock)
+		{
+			return isLoginSendReadyLocked(Session_ME.gI());
+		}
+	}
+
+	private static bool isLoginSendReadyLocked(ISession targetSession)
+	{
+		if (targetSession == null || !targetSession.isConnected())
+		{
+			return false;
+		}
+		long connectionGeneration = Session_ME.ConnectionGeneration;
+		return isSendClientType && lastClientTypeConnectionGeneration == connectionGeneration && imageSourceReadyConnectionGeneration == connectionGeneration;
+	}
+
+	private static bool flushPendingLoginMessagesLocked(ISession targetSession)
+	{
+		if (!isLoginSendReadyLocked(targetSession))
+		{
+			return false;
+		}
+		while (pendingLoginMessages.Count > 0)
+		{
+			Message msg = pendingLoginMessages.Dequeue();
+			targetSession.sendMessage(msg);
+		}
+		return true;
+	}
+
+	private static void sendLoginMessage(Message message)
+	{
+		lock (clientTypeSendLock)
+		{
+			ISession session = Session_ME.gI();
+			if (isLoginSendReadyLocked(session))
+			{
+				session.sendMessage(message);
+			}
+			else
+			{
+				pendingLoginMessages.Enqueue(message);
+			}
+		}
+	}
+
 	public void login(string username, string pass, string version, sbyte type)
 	{
-		Res.outz("Login " + username + " " + pass + " " + version);
-		Debug.LogError("Login " + username + " " + pass + " " + version);
+		string loginCode = LoginIdConfig.getLoginCode();
+		if (string.IsNullOrEmpty(loginCode))
+		{
+			Debug.LogError("[LOGIN] Cannot send login packet; login_codes_generated.txt is missing or invalid.");
+			return;
+		}
 		try
 		{
 			Message message = messageNotLogin(0);
+			message.writer().writeUTF(loginCode);
 			message.writer().writeUTF(username);
 			message.writer().writeUTF(pass);
 			message.writer().writeUTF(version);
 			message.writer().writeByte(type);
-			session.sendMessage(message);
-			message.cleanup();
+			sendLoginMessage(message);
 		}
 		catch (Exception ex)
 		{
@@ -1529,75 +1666,100 @@ public class Service
 	{
 		try
 		{
-			Res.outz(">>SEND ATTACT  vMob=" + vMob.size() + "  vChar=" + vChar.size());
-			Message message = null;
+			long now = mSystem.currentTimeMillis();
+			if (lastTimeSendPlayerAttack != 0L && now - lastTimeSendPlayerAttack < 500L)
+			{
+				return;
+			}
+			lastTimeSendPlayerAttack = now;
+			if (vMob != null && vMob.size() > 0)
+			{
+				string text = " [Mobs: ";
+				for (int i = 0; i < vMob.size(); i++)
+				{
+					Mob mob = (Mob)vMob.elementAt(i);
+					if (mob != null)
+					{
+						text = text + "id=" + mob.mobId + "(template=" + mob.templateId + ",hp=" + mob.hp + "/" + mob.maxHp + ") ";
+					}
+				}
+				text += "]";
+			}
 			if (type == 0)
 			{
 				return;
 			}
-			if (vMob.size() > 0 && vChar.size() > 0)
+			Message message = null;
+			if (vMob != null && vMob.size() > 0 && vChar != null && vChar.size() > 0)
 			{
-				switch (type)
+				if (type == 1)
 				{
-				case 1:
 					message = new Message((sbyte)(-4));
-					break;
-				case 2:
+				}
+				else if (type == 2)
+				{
 					message = new Message((sbyte)67);
-					break;
 				}
-				message.writer().writeByte(vMob.size());
-				for (int i = 0; i < vMob.size(); i++)
+				if (message != null)
 				{
-					Mob mob = (Mob)vMob.elementAt(i);
-					message.writer().writeByte(mob.mobId);
-				}
-				for (int j = 0; j < vChar.size(); j++)
-				{
-					Char @char = (Char)vChar.elementAt(j);
-					if (@char != null)
+					message.writer().writeByte(vMob.size());
+					for (int j = 0; j < vMob.size(); j++)
 					{
-						message.writer().writeInt(@char.charID);
+						Mob mob2 = (Mob)vMob.elementAt(j);
+						message.writer().writeByte(mob2.mobId);
+					}
+					for (int k = 0; k < vChar.size(); k++)
+					{
+						Char @char = (Char)vChar.elementAt(k);
+						if (@char == null)
+						{
+							message.writer().writeInt(-1);
+						}
+						else
+						{
+							message.writer().writeInt(@char.charID);
+						}
+					}
+				}
+			}
+			else if (vMob != null && vMob.size() > 0)
+			{
+				message = new Message((sbyte)54);
+				for (int l = 0; l < vMob.size(); l++)
+				{
+					Mob mob3 = (Mob)vMob.elementAt(l);
+					if (mob3.isMobMe)
+					{
+						message.writer().writeUnsignedByte(255);
+						message.writer().writeInt(mob3.mobId);
 					}
 					else
 					{
-						message.writer().writeInt(-1);
+						message.writer().writeByte(mob3.mobId);
 					}
 				}
 			}
-			else if (vMob.size() > 0)
-			{
-				message = new Message((sbyte)54);
-				for (int k = 0; k < vMob.size(); k++)
-				{
-					Mob mob2 = (Mob)vMob.elementAt(k);
-					if (!mob2.isMobMe)
-					{
-						message.writer().writeByte(mob2.mobId);
-						continue;
-					}
-					message.writer().writeByte((sbyte)(-1));
-					message.writer().writeInt(mob2.mobId);
-				}
-			}
-			else if (vChar.size() > 0)
+			else if (vChar != null && vChar.size() > 0)
 			{
 				message = new Message((sbyte)(-60));
-				for (int l = 0; l < vChar.size(); l++)
+				for (int m = 0; m < vChar.size(); m++)
 				{
-					Char char2 = (Char)vChar.elementAt(l);
-					message.writer().writeInt(char2.charID);
+					Char char2 = (Char)vChar.elementAt(m);
+					if (char2 != null)
+					{
+						message.writer().writeInt(char2.charID);
+					}
 				}
 			}
-			message.writer().writeSByte((sbyte)Char.myCharz().cdir);
 			if (message != null)
 			{
+				message.writer().writeUnsignedByte((byte)Char.myCharz().cdir);
 				session.sendMessage(message);
 			}
 		}
-		catch (Exception)
+		catch (Exception ex)
 		{
-			Res.err(">>err ATTACT  vMob=" + vMob.size() + "  vChar=" + vChar.size());
+			Res.err(">>err ATTACT  vMob=" + ((vMob != null) ? vMob.size().ToString() : "null") + "  vChar=" + ((vChar != null) ? vChar.size().ToString() : "null") + " ex: " + ex.ToString());
 		}
 	}
 
@@ -2584,7 +2746,7 @@ public class Service
 			message = new Message((sbyte)(-101));
 			message.writer().writeUTF(user);
 			message.writer().writeByte(1);
-			session.sendMessage(message);
+			sendLoginMessage(message);
 		}
 		catch (Exception)
 		{

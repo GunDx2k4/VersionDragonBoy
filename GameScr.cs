@@ -367,6 +367,20 @@ public class GameScr : mScreen, IChatable
 
 	public static sbyte vcTask;
 
+	public static bool isSentClientOK;
+
+	public static bool isWaitingItemUpdate;
+
+	public static bool hasItemType0;
+
+	public static bool hasItemType1;
+
+	public static bool hasItemType100;
+
+	public static bool hasItemType101;
+
+	public static long lastItemUpdateTime;
+
 	public static Image imgArrow;
 
 	public static Image imgArrow2;
@@ -473,7 +487,8 @@ public class GameScr : mScreen, IChatable
 
 	public static Image img_ct_bar_0 = mSystem.loadImage("/mainImage/i_pve_bar_0.png");
 
-	public static Image img_ct_bar_1 = mSystem.loadImage("/mainImage/i_pve_bar_1.png");
+	public static FrameImage fraAuto;
+
 
 	public static bool isUseTouch;
 
@@ -500,6 +515,8 @@ public class GameScr : mScreen, IChatable
 	public static int firstY;
 
 	public static int wSkill;
+
+	public bool preservePanelMenuDuringAutoAction;
 
 	public static long deltaTime;
 
@@ -1043,8 +1060,23 @@ public class GameScr : mScreen, IChatable
 		cmdDoiCo.y = cmdChatTheGioi.h * 4 + mFont.tahoma_7_white.getHeight();
 	}
 
+	public static void resetItemUpdateFlags()
+	{
+		isSentClientOK = false;
+		isWaitingItemUpdate = false;
+		hasItemType0 = false;
+		hasItemType1 = false;
+		hasItemType100 = false;
+		hasItemType101 = false;
+	}
+
 	public static void loadBg()
 	{
+		Image image = GameCanvas.loadImage("/mainImage/img_auto.png");
+		if (image != null)
+		{
+			fraAuto = new FrameImage(image, 1, 6);
+		}
 		fra_PVE_Bar_0 = new FrameImage(mSystem.loadImage("/mainImage/i_pve_bar_0.png"), 6, 15);
 		fra_PVE_Bar_1 = new FrameImage(mSystem.loadImage("/mainImage/i_pve_bar_1.png"), 38, 21);
 		imgVS = mSystem.loadImage("/mainImage/i_vs.png");
@@ -1750,18 +1782,34 @@ public class GameScr : mScreen, IChatable
 	{
 		try
 		{
+			if (isSentClientOK)
+			{
+				return;
+			}
 			Res.outz("<readOk><vsData<" + vsData + "==" + vcData);
 			Res.outz("<readOk><vsMap<" + vsMap + "==" + vcMap);
 			Res.outz("<readOk><vsSkill<" + vsSkill + "==" + vcSkill);
 			Res.outz("<readOk><vsItem<" + vsItem + "==" + vcItem);
-			if (vsData == vcData && vsMap == vcMap && vsSkill == vcSkill && vsItem == vcItem)
+			if (vsData != vcData || vsMap != vcMap || vsSkill != vcSkill || vsItem != vcItem)
 			{
-				Res.outz(vsData + "," + vsMap + "," + vsSkill + "," + vsItem);
+				return;
+			}
+			bool flag = hasItemType0 && hasItemType1 && hasItemType100 && hasItemType101;
+			bool flag2 = hasItemType0 && hasItemType1 && (lastItemUpdateTime > 0L && mSystem.currentTimeMillis() - lastItemUpdateTime >= 500L);
+			if (!isWaitingItemUpdate || flag || flag2)
+			{
+				isSentClientOK = true;
+				isWaitingItemUpdate = false;
+				Res.outz(">>>>> DA DU TYPE VA VERSION -> GUI CLIENT_OK: " + vsData + "," + vsMap + "," + vsSkill + "," + vsItem);
 				gI().readDart();
 				gI().readEfect();
 				gI().readArrow();
 				gI().readSkill();
 				Service.gI().clientOk();
+			}
+			else
+			{
+				Res.outz("<readOk> Dang cho du cac type Item: [0=" + hasItemType0 + ", 1=" + hasItemType1 + ", 100=" + hasItemType100 + ", 101=" + hasItemType101 + "]");
 			}
 		}
 		catch (Exception ex)
@@ -2634,9 +2682,17 @@ public class GameScr : mScreen, IChatable
 		return true;
 	}
 
+	public bool shouldPreservePanelMenu()
+	{
+		return preservePanelMenuDuringAutoAction;
+	}
+
 	public void resetButton()
 	{
-		GameCanvas.menu.showMenu = false;
+		if (!shouldPreservePanelMenu())
+		{
+			GameCanvas.menu.showMenu = false;
+		}
 		ChatTextField.gI().close();
 		ChatTextField.gI().center = null;
 		isLockKey = false;
@@ -3948,6 +4004,10 @@ public class GameScr : mScreen, IChatable
 
 	private void autoPlay()
 	{
+		if (AutoTrainMenu.isChecked != null && AutoTrainMenu.isChecked.Length > 0 && AutoTrainMenu.isChecked[0])
+		{
+			return;
+		}
 		if (timeSkill > 0)
 		{
 			timeSkill--;
@@ -4015,7 +4075,7 @@ public class GameScr : mScreen, IChatable
 		{
 			for (int l = 0; l < onScreenSkill.Length; l++)
 			{
-				if (onScreenSkill[l] == null || onScreenSkill[l].paintCanNotUseSkill || onScreenSkill[l].template.id == 10 || onScreenSkill[l].template.id == 11 || onScreenSkill[l].template.id == 14 || onScreenSkill[l].template.id == 23 || onScreenSkill[l].template.id == 7 || Char.myCharz().skillInfoPaint() != null || onScreenSkill[l].template.isSkillSpec())
+				if (onScreenSkill[l] == null || (AutoTrainMenu.isCheckedSkill != null && l < AutoTrainMenu.isCheckedSkill.Length && !AutoTrainMenu.isCheckedSkill[l]) || onScreenSkill[l].paintCanNotUseSkill || onScreenSkill[l].template.id == 10 || onScreenSkill[l].template.id == 11 || onScreenSkill[l].template.id == 14 || onScreenSkill[l].template.id == 23 || onScreenSkill[l].template.id == 7 || Char.myCharz().skillInfoPaint() != null || onScreenSkill[l].template.isSkillSpec())
 				{
 					continue;
 				}
@@ -4042,7 +4102,7 @@ public class GameScr : mScreen, IChatable
 		}
 		for (int m = 0; m < keySkill.Length; m++)
 		{
-			if (keySkill[m] == null || keySkill[m].paintCanNotUseSkill || keySkill[m].template.id == 10 || keySkill[m].template.id == 11 || keySkill[m].template.id == 14 || keySkill[m].template.id == 23 || keySkill[m].template.id == 7 || Char.myCharz().skillInfoPaint() != null)
+			if (keySkill[m] == null || (AutoTrainMenu.isCheckedSkill != null && m < AutoTrainMenu.isCheckedSkill.Length && !AutoTrainMenu.isCheckedSkill[m]) || keySkill[m].paintCanNotUseSkill || keySkill[m].template.id == 10 || keySkill[m].template.id == 11 || keySkill[m].template.id == 14 || keySkill[m].template.id == 23 || keySkill[m].template.id == 7 || Char.myCharz().skillInfoPaint() != null)
 			{
 				continue;
 			}
@@ -4269,6 +4329,23 @@ public class GameScr : mScreen, IChatable
 		}
 	}
 
+	public void doUseSkillForAutoTrain(Skill skill)
+	{
+		if (skill == null)
+		{
+			return;
+		}
+		preservePanelMenuDuringAutoAction = true;
+		try
+		{
+			doUseSkill(skill, true);
+		}
+		finally
+		{
+			preservePanelMenuDuringAutoAction = false;
+		}
+	}
+
 	public void doUseSkillNotFocus(Skill skill)
 	{
 		if (((TileMap.mapID != 112 && TileMap.mapID != 113) || Char.myCharz().cTypePk != 0) && checkSkillValid())
@@ -4455,6 +4532,17 @@ public class GameScr : mScreen, IChatable
 				}
 			}
 			updateGamePad();
+			if (GameCanvas.isPointerHoldIn(xHP - 65, yHP - 36, 40, 40) && Char.myCharz().statusMe != 14 && mobCapcha == null)
+			{
+				mScreen.keyTouch = 16;
+				GameCanvas.isPointerJustDown = false;
+				isPointerDowning = false;
+				if (GameCanvas.isPointerClick && GameCanvas.isPointerJustRelease)
+				{
+					GameCanvas.isPointerClick = (GameCanvas.isPointerJustDown = (GameCanvas.isPointerJustRelease = false));
+					AutoTrainMenu.gI().show();
+				}
+			}
 			if (((isAnalog != 0) ? GameCanvas.isPointerHoldIn(xHP, yHP + 10, 34, 34) : GameCanvas.isPointerHoldIn(xHP, yHP + 10, 40, 40)) && Char.myCharz().statusMe != 14 && mobCapcha == null)
 			{
 				mScreen.keyTouch = 10;
@@ -4735,6 +4823,7 @@ public class GameScr : mScreen, IChatable
 
 	public override void update()
 	{
+		AutoTrainMenu.updateAutoTrain();
 		if (GameCanvas.keyPressed[16])
 		{
 			GameCanvas.keyPressed[16] = false;
@@ -6291,6 +6380,27 @@ public class GameScr : mScreen, IChatable
 						g.drawImage((mScreen.keyTouch != 14) ? imgNut : imgNutF, xHP + 20 + 5, yHP + 20 - 6 - 40 + 10, mGraphics.HCENTER | mGraphics.VCENTER);
 						SmallImage.drawSmallImage(g, 1087, xHP + 20 - 7 + 5, yHP + 20 - 6 - 40 - 7 + 10, 0, 0);
 					}
+				}
+			}
+			if (Char.myCharz().statusMe != 14 && Char.myCharz().statusMe != 5 && !Char.myCharz().isPaintNewSkill)
+			{
+				g.drawImage((mScreen.keyTouch != 16) ? imgNut : imgNutF, xHP - 45, yHP - 16, 0);
+				if (fraAuto == null)
+				{
+					Image image = GameCanvas.loadImage("/mainImage/img_auto.png");
+					if (image != null)
+					{
+						fraAuto = new FrameImage(image, 1, 6, 0);
+					}
+				}
+				if (fraAuto != null)
+				{
+					int idx = 0;
+					if (AutoTrainMenu.isChecked != null && AutoTrainMenu.isChecked.Length > 0 && AutoTrainMenu.isChecked[0])
+					{
+						idx = gameTicks / 2 % (fraAuto.nFrame - 1) + 1;
+					}
+					fraAuto.drawFrame(idx, xHP - 45, yHP - 16, 0, 0, g);
 				}
 			}
 			if (isHaveSelectSkill)

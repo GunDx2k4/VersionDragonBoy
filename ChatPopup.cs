@@ -98,6 +98,26 @@ public class ChatPopup : Effect2, IActionListener
 
 	private int pyy;
 
+	public static void clearTransientPopups()
+	{
+		removeFromEffectList(GameScr.effects);
+	}
+
+	private static void removeFromEffectList(MyVector effects)
+	{
+		if (effects == null)
+		{
+			return;
+		}
+		for (int num = effects.size() - 1; num >= 0; num--)
+		{
+			if (effects.elementAt(num) is ChatPopup)
+			{
+				effects.removeElementAt(num);
+			}
+		}
+	}
+
 	public static void addNextPopUpMultiLine(string strNext, Npc next)
 	{
 		nextMultiChatPopUp = strNext;

@@ -158,6 +158,12 @@ public class mFont
 
 	private string pathImage;
 
+	private static GUIStyle s_calcStyle;
+
+	private static GUIContent s_calcContent;
+
+	private static GUIStyle s_drawStyle;
+
 	public static sbyte cl__white;
 
 	public static sbyte cl__yellow;
@@ -748,9 +754,17 @@ public class mFont
 	{
 		try
 		{
-			GUIStyle gUIStyle = new GUIStyle();
-			gUIStyle.font = myFont;
-			return (int)gUIStyle.CalcSize(new GUIContent(s)).x / mGraphics.zoomLevel;
+			if (s_calcStyle == null)
+			{
+				s_calcStyle = new GUIStyle();
+			}
+			if (s_calcContent == null)
+			{
+				s_calcContent = new GUIContent();
+			}
+			s_calcStyle.font = myFont;
+			s_calcContent.text = s;
+			return (int)s_calcStyle.CalcSize(s_calcContent).x / mGraphics.zoomLevel;
 		}
 		catch (Exception ex)
 		{
@@ -791,7 +805,11 @@ public class mFont
 	public void _drawString(mGraphics g, string st, int x0, int y0, int align)
 	{
 		y0 += yAddFont;
-		GUIStyle gUIStyle = new GUIStyle(GUI.skin.label);
+		if (s_drawStyle == null)
+		{
+			s_drawStyle = new GUIStyle(GUI.skin.label);
+		}
+		GUIStyle gUIStyle = s_drawStyle;
 		gUIStyle.font = myFont;
 		float num = 0f;
 		float num2 = 0f;
